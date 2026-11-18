@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Productos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario de Productos</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -11,60 +12,213 @@
 
     <header>
         <h1>Inventario de Productos</h1>
+        <p>Control y administración del catálogo de artículos</p>
     </header>
 
     <nav>
         <a href="index.html">Inicio</a>
-        <a href="productos.html">Productos</a>
+        <a href="productos.html" class="active">Productos</a>
         <a href="agregar.html">Agregar Producto</a>
     </nav>
 
     <main>
+        <div class="page-header">
+            <div class="page-title">
+                <h2>Catálogo de Artículos</h2>
+                <p>Consulta, edición y control de existencias en tiempo real</p>
+            </div>
+            <div>
+                <a href="agregar.html" class="btn btn-primary">+ Registrar Producto</a>
+            </div>
+        </div>
 
-        <table>
+        <!-- Contenedor para mensajes de notificación -->
+        <div id="alerta-notificacion"></div>
 
-            <tr>
-                <th>ID</th>
-                <th>Producto</th>
-                <th>Categoría</th>
-                <th>Existencia</th>
-            </tr>
+        <!-- Barra de herramientas (Buscador y acciones rápidas) -->
+        <div class="toolbar">
+            <input type="text" id="input-busqueda" class="search-input" placeholder="🔍 Buscar por nombre o categoría...">
+            <button id="btn-restaurar" class="btn btn-secondary" title="Restaura los 4 productos iniciales para pruebas">
+                🔄 Restaurar datos iniciales
+            </button>
+        </div>
 
-            <tr>
-                <td>1</td>
-                <td>Lápiz</td>
-                <td>Papelería</td>
-                <td>120</td>
-            </tr>
+        <!-- Tabla interactiva de productos -->
+        <div class="table-responsive">
+            <table id="tabla-productos">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">ID</th>
+                        <th>Producto</th>
+                        <th>Categoría</th>
+                        <th>Descripción</th>
+                        <th style="width: 140px; text-align: center;">Existencia</th>
+                        <th style="width: 180px; text-align: right;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpo-tabla">
+                    <!-- Filas generadas dinámicamente con JavaScript -->
+                </tbody>
+            </table>
 
-            <tr>
-                <td>2</td>
-                <td>Cuaderno</td>
-                <td>Papelería</td>
-                <td>50</td>
-            </tr>
-
-            <tr>
-                <td>3</td>
-                <td>Borrador</td>
-                <td>Papelería</td>
-                <td>35</td>
-            </tr>
-
-            <tr>
-                <td>4</td>
-                <td>Regla</td>
-                <td>Papelería</td>
-                <td>40</td>
-            </tr>
-
-        </table>
-
+            <div id="estado-vacio" class="empty-state" style="display: none;">
+                <h3>No hay productos disponibles</h3>
+                <p>No se encontraron artículos que coincidan con la búsqueda o el inventario está vacío.</p>
+                <div style="margin-top: 15px;">
+                    <a href="agregar.html" class="btn btn-primary">+ Agregar el primer producto</a>
+                </div>
+            </div>
+        </div>
     </main>
 
     <footer>
-        Sistema de Inventario
+        Sistema de Inventario | Aplicaciones Web - Unidad 4
     </footer>
+
+    <script src="inventario.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const cuerpoTabla = document.getElementById('cuerpo-tabla');
+            const estadoVacio = document.getElementById('estado-vacio');
+            const inputBusqueda = document.getElementById('input-busqueda');
+            const btnRestaurar = document.getElementById('btn-restaurar');
+            const contenedorAlerta = document.getElementById('alerta-notificacion');
+
+            // Mostrar mensaje si venimos de agregar o modificar
+            const urlParams = new URLSearchParams(window.location.search);
+            const mensajeExito = urlParams.get('exito');
+            if (mensajeExito) {
+                mostrarAlerta(decodeURIComponent(mensajeExito), 'success');
+                // Limpiar parámetro de URL sin recargar
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+
+            function mostrarAlerta(texto, tipo = 'success') {
+                const icono = tipo === 'success' ? '✓' : '⚠️';
+                const clase = tipo === 'success' ? 'alert-success' : (tipo === 'warning' ? 'alert-warning' : 'alert-danger');
+                contenedorAlerta.innerHTML = `
+                    <div class="alert ${clase}">
+                        <span>${icono}</span>
+                        <div>${texto}</div>
+                    </div>
+                `;
+                setTimeout(() => {
+                    contenedorAlerta.innerHTML = '';
+                }, 5000);
+            }
+
+            // Renderizar la tabla de productos
+            function renderizarTabla(filtro = '') {
+                const productos = obtenerProductos();
+                const filtroLimpio = filtro.toLowerCase().trim();
+
+                const productosFiltrados = productos.filter(p => {
+                    const nombre = (p.nombre || '').toLowerCase();
+                    const cat = (p.categoria || '').toLowerCase();
+                    const desc = (p.descripcion || '').toLowerCase();
+                    return nombre.includes(filtroLimpio) || cat.includes(filtroLimpio) || desc.includes(filtroLimpio);
+                });
+
+                cuerpoTabla.innerHTML = '';
+
+                if (productosFiltrados.length === 0) {
+                    estadoVacio.style.display = 'block';
+                    document.getElementById('tabla-productos').style.display = 'none';
+                    return;
+                }
+
+                estadoVacio.style.display = 'none';
+                document.getElementById('tabla-productos').style.display = 'table';
+
+                productosFiltrados.forEach(prod => {
+                    const tr = document.createElement('tr');
+
+                    // Definir color de badge de existencia
+                    let badgeClass = 'badge-success';
+                    let estadoTexto = `${prod.existencia} en stock`;
+                    if (prod.existencia === 0) {
+                        badgeClass = 'badge-danger';
+                        estadoTexto = 'Agotado (0)';
+                    } else if (prod.existencia <= 20) {
+                        badgeClass = 'badge-warning';
+                        estadoTexto = `Bajo stock (${prod.existencia})`;
+                    }
+
+                    tr.innerHTML = `
+                        <td style="font-weight: 600; color: var(--text-muted);">#${prod.id}</td>
+                        <td style="font-weight: 600; color: var(--text-primary);">${escaparHTML(prod.nombre)}</td>
+                        <td><span class="badge badge-category">${escaparHTML(prod.categoria)}</span></td>
+                        <td style="color: var(--text-secondary); font-size: 13px;">${escaparHTML(prod.descripcion || 'Sin descripción')}</td>
+                        <td style="text-align: center;">
+                            <span class="badge ${badgeClass}">${estadoTexto}</span>
+                        </td>
+                        <td style="text-align: right;">
+                            <div class="action-buttons">
+                                <a href="agregar.html?id=${prod.id}" class="btn-sm btn-edit" title="Modificar información de este producto">
+                                    ✏️ Modificar
+                                </a>
+                                <button type="button" class="btn-sm btn-delete" data-id="${prod.id}" data-nombre="${escaparHTML(prod.nombre)}" title="Eliminar este producto del inventario">
+                                    🗑️ Eliminar
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    cuerpoTabla.appendChild(tr);
+                });
+
+                // Asignar eventos de eliminación
+                document.querySelectorAll('.btn-delete').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const id = e.currentTarget.getAttribute('data-id');
+                        const nombre = e.currentTarget.getAttribute('data-nombre');
+                        confirmarYEliminar(id, nombre);
+                    });
+                });
+            }
+
+            // Manejo de Caso Alterno: Confirmación antes de eliminar
+            function confirmarYEliminar(id, nombre) {
+                const confirmacion = window.confirm(
+                    `¿Está seguro de que desea eliminar el producto "${nombre}" (ID: ${id})?\n\nEsta acción no se puede deshacer.`
+                );
+
+                if (confirmacion) {
+                    const resultado = eliminarProducto(id);
+                    if (resultado.exito) {
+                        mostrarAlerta(`El producto "${nombre}" ha sido eliminado correctamente del inventario.`, 'success');
+                        renderizarTabla(inputBusqueda.value);
+                    } else {
+                        mostrarAlerta(resultado.error || "No se pudo eliminar el producto.", 'danger');
+                    }
+                }
+            }
+
+            // Búsqueda en tiempo real
+            inputBusqueda.addEventListener('input', (e) => {
+                renderizarTabla(e.target.value);
+            });
+
+            // Restaurar datos de prueba
+            btnRestaurar.addEventListener('click', () => {
+                if (window.confirm("¿Desea restaurar el catálogo a los 4 productos iniciales de demostración?")) {
+                    restaurarDatosIniciales();
+                    mostrarAlerta("Datos iniciales de prueba restaurados satisfactoriamente.", "success");
+                    inputBusqueda.value = '';
+                    renderizarTabla();
+                }
+            });
+
+            // Utilidad de seguridad contra XSS
+            function escaparHTML(texto) {
+                const div = document.createElement('div');
+                div.textContent = texto || '';
+                return div.innerHTML;
+            }
+
+            // Carga inicial
+            renderizarTabla();
+        });
+    </script>
 
 </body>
 

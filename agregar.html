@@ -3,49 +3,248 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Agregar Producto</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro y Modificación de Productos</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
     <header>
-        <h1>Registro de Producto</h1>
+        <h1 id="header-titulo">Registro de Producto</h1>
+        <p id="header-subtitulo">Ingrese los datos correspondientes para agregar un artículo al inventario</p>
     </header>
 
     <nav>
         <a href="index.html">Inicio</a>
         <a href="productos.html">Productos</a>
-        <a href="agregar.html">Agregar Producto</a>
+        <a href="agregar.html" class="active" id="nav-agregar">Agregar Producto</a>
     </nav>
 
     <main>
+        <div class="page-header">
+            <div class="page-title">
+                <h2 id="vista-titulo">Nuevo Artículo</h2>
+                <p id="vista-descripcion">Complete los campos obligatorios para guardar el artículo en el sistema.</p>
+            </div>
+            <div>
+                <a href="productos.html" class="btn btn-secondary">← Volver al Inventario</a>
+            </div>
+        </div>
 
-        <form>
+        <!-- Contenedor dinámico de alertas y errores -->
+        <div id="contenedor-alertas"></div>
 
-            <label>Nombre del producto</label>
-            <input type="text" placeholder="Ingrese nombre">
+        <div class="form-card">
+            <form id="formulario-producto" novalidate>
+                <!-- Campo oculto o visible de ID si es edición -->
+                <input type="hidden" id="producto-id" value="">
 
-            <label>Categoría</label>
-            <input type="text" placeholder="Ingrese categoría">
+                <div id="grupo-id-visual" class="form-group" style="display: none;">
+                    <label>ID del Producto (Solo lectura)</label>
+                    <input type="text" id="producto-id-mostrar" class="form-control" disabled style="background-color: #f1f5f9; cursor: not-allowed; font-weight: bold; width: 150px;">
+                    <div class="form-help">Identificador único asignado por el sistema.</div>
+                </div>
 
-            <label>Descripción</label>
-            <textarea rows="4"></textarea>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="nombre">Nombre del producto <span class="required">*</span></label>
+                        <input type="text" id="nombre" class="form-control" placeholder="Ej. Lápiz 2B, Tijeras, Cuaderno..." required autocomplete="off">
+                        <div class="form-help">Ingrese un nombre descriptivo para el artículo.</div>
+                        <div id="error-nombre" class="form-error"></div>
+                    </div>
 
-            <label>Cantidad</label>
-            <input type="number" placeholder="0">
+                    <div class="form-group">
+                        <label for="categoria">Categoría <span class="required">*</span></label>
+                        <input type="text" id="categoria" list="lista-categorias" class="form-control" placeholder="Seleccione o escriba una categoría..." required>
+                        <datalist id="lista-categorias">
+                            <option value="Papelería">
+                            <option value="Oficina">
+                            <option value="Cómputo">
+                            <option value="Mobiliario">
+                            <option value="Limpieza">
+                            <option value="Electrónica">
+                        </datalist>
+                        <div class="form-help">Seleccione una de la lista o escriba una nueva.</div>
+                        <div id="error-categoria" class="form-error"></div>
+                    </div>
+                </div>
 
-            <button type="submit">
-                Guardar Producto
-            </button>
+                <div class="form-group">
+                    <label for="descripcion">Descripción</label>
+                    <textarea id="descripcion" rows="3" class="form-control" placeholder="Características adicionales del producto, presentación, marca, color o detalles relevantes..."></textarea>
+                    <div class="form-help">Opcional. Información útil para el control del inventario.</div>
+                </div>
 
-        </form>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="existencia">Cantidad en Existencia <span class="required">*</span></label>
+                        <input type="number" id="existencia" class="form-control" placeholder="0" min="0" step="1" required>
+                        <div class="form-help">Debe ser un número entero mayor o igual a 0.</div>
+                        <div id="error-existencia" class="form-error"></div>
+                    </div>
+                </div>
 
+                <div class="form-actions">
+                    <button type="submit" id="btn-submit" class="btn btn-primary">
+                        💾 Guardar Producto
+                    </button>
+                    <a href="productos.html" class="btn btn-secondary">
+                        ✕ Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
     </main>
 
     <footer>
-        Sistema de Inventario
+        Sistema de Inventario | Aplicaciones Web - Unidad 4
     </footer>
+
+    <script src="inventario.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('formulario-producto');
+            const inputId = document.getElementById('producto-id');
+            const inputIdMostrar = document.getElementById('producto-id-mostrar');
+            const grupoIdVisual = document.getElementById('grupo-id-visual');
+            const inputNombre = document.getElementById('nombre');
+            const inputCategoria = document.getElementById('categoria');
+            const inputDescripcion = document.getElementById('descripcion');
+            const inputExistencia = document.getElementById('existencia');
+            const btnSubmit = document.getElementById('btn-submit');
+            const contenedorAlertas = document.getElementById('contenedor-alertas');
+
+            // Detectar si venimos en modo modificación (?id=X)
+            const urlParams = new URLSearchParams(window.location.search);
+            const idEdicion = urlParams.get('id');
+
+            let modoEdicion = false;
+
+            if (idEdicion) {
+                const producto = obtenerProductoPorId(idEdicion);
+                if (producto) {
+                    modoEdicion = true;
+                    // Ajustar textos de la interfaz para Modo Modificar
+                    document.title = `Modificar Producto #${producto.id} - Sistema de Inventario`;
+                    document.getElementById('header-titulo').textContent = 'Modificación de Producto';
+                    document.getElementById('header-subtitulo').textContent = `Actualización de datos para el artículo #${producto.id}`;
+                    document.getElementById('vista-titulo').textContent = `Modificar: ${producto.nombre}`;
+                    document.getElementById('vista-descripcion').textContent = 'Realice los cambios necesarios y presione actualizar para guardar en el inventario.';
+                    document.getElementById('nav-agregar').textContent = 'Modificar Producto';
+
+                    // Cargar valores existentes
+                    inputId.value = producto.id;
+                    inputIdMostrar.value = `#${producto.id}`;
+                    grupoIdVisual.style.display = 'block';
+
+                    inputNombre.value = producto.nombre || '';
+                    inputCategoria.value = producto.categoria || '';
+                    inputDescripcion.value = producto.descripcion || '';
+                    inputExistencia.value = producto.existencia !== undefined ? producto.existencia : 0;
+
+                    btnSubmit.innerHTML = '🔄 Actualizar Producto';
+                } else {
+                    // Caso alterno: El ID solicitado no existe
+                    mostrarAlerta(`El producto con ID #${idEdicion} no existe o fue eliminado previamente.`, 'danger');
+                    form.style.display = 'none';
+                    return;
+                }
+            }
+
+            // Limpiar errores visuales
+            function limpiarErrores() {
+                contenedorAlertas.innerHTML = '';
+                [inputNombre, inputCategoria, inputExistencia].forEach(input => {
+                    input.classList.remove('is-invalid');
+                });
+                document.getElementById('error-nombre').textContent = '';
+                document.getElementById('error-categoria').textContent = '';
+                document.getElementById('error-existencia').textContent = '';
+            }
+
+            function mostrarAlerta(mensaje, tipo = 'danger', lista = []) {
+                const icono = tipo === 'success' ? '✓' : (tipo === 'warning' ? '⚠️' : '⛔');
+                const clase = tipo === 'success' ? 'alert-success' : (tipo === 'warning' ? 'alert-warning' : 'alert-danger');
+
+                let listaHtml = '';
+                if (lista.length > 0) {
+                    listaHtml = `<ul>${lista.map(err => `<li>${escaparHTML(err)}</li>`).join('')}</ul>`;
+                }
+
+                contenedorAlertas.innerHTML = `
+                    <div class="alert ${clase}">
+                        <span style="font-size: 18px;">${icono}</span>
+                        <div>
+                            <strong>${escaparHTML(mensaje)}</strong>
+                            ${listaHtml}
+                        </div>
+                    </div>
+                `;
+                contenedorAlertas.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            function escaparHTML(texto) {
+                const div = document.createElement('div');
+                div.textContent = texto || '';
+                return div.innerHTML;
+            }
+
+            // Manejo del envío del formulario (Guardar / Actualizar)
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                limpiarErrores();
+
+                const datosForm = {
+                    nombre: inputNombre.value,
+                    categoria: inputCategoria.value,
+                    descripcion: inputDescripcion.value,
+                    existencia: inputExistencia.value
+                };
+
+                if (modoEdicion) {
+                    // Proceso de modificación
+                    const resMod = modificarProducto(inputId.value, datosForm);
+                    if (resMod.exito) {
+                        const msg = encodeURIComponent(`Producto "${resMod.producto.nombre}" modificado exitosamente.`);
+                        window.location.href = `productos.html?exito=${msg}`;
+                    } else {
+                        resaltarCamposConError(resMod.errores);
+                        mostrarAlerta("No se pudo actualizar el producto. Corrija los siguientes detalles:", "danger", resMod.errores);
+                    }
+                } else {
+                    // Proceso de alta nuevo producto
+                    const resReg = registrarProducto(datosForm);
+                    if (resReg.exito) {
+                        const msg = encodeURIComponent(`Producto "${resReg.producto.nombre}" registrado con éxito en el inventario.`);
+                        window.location.href = `productos.html?exito=${msg}`;
+                    } else {
+                        resaltarCamposConError(resReg.errores);
+                        mostrarAlerta("No se pudo guardar el producto. Revise las observaciones siguientes:", "danger", resReg.errores);
+                    }
+                }
+            });
+
+            // Resaltar inputs correspondientes según el error
+            function resaltarCamposConError(errores) {
+                errores.forEach(err => {
+                    const errLower = err.toLowerCase();
+                    if (errLower.includes('nombre')) {
+                        inputNombre.classList.add('is-invalid');
+                        document.getElementById('error-nombre').textContent = err;
+                    }
+                    if (errLower.includes('categoría')) {
+                        inputCategoria.classList.add('is-invalid');
+                        document.getElementById('error-categoria').textContent = err;
+                    }
+                    if (errLower.includes('cantidad') || errLower.includes('existencia') || errLower.includes('negativo')) {
+                        inputExistencia.classList.add('is-invalid');
+                        document.getElementById('error-existencia').textContent = err;
+                    }
+                });
+            }
+        });
+    </script>
 
 </body>
 

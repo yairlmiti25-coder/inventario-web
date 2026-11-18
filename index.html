@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Sistema de Inventario</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Inventario - Inicio</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -15,32 +16,84 @@
     </header>
 
     <nav>
-        <a href="index.html">Inicio</a>
+        <a href="index.html" class="active">Inicio</a>
         <a href="productos.html">Productos</a>
         <a href="agregar.html">Agregar Producto</a>
     </nav>
 
     <main>
-        <h2>Bienvenido</h2>
+        <div class="page-header">
+            <div class="page-title">
+                <h2>Panel de Control</h2>
+                <p>Resumen general y estado actual del inventario de productos</p>
+            </div>
+            <div>
+                <a href="agregar.html" class="btn btn-primary">+ Nuevo Producto</a>
+            </div>
+        </div>
 
-        <p>
-            Este sistema permite visualizar el inventario de productos
-            y registrar nuevos artículos.
-        </p>
+        <!-- Estadísticas dinámicas -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Artículos Registrados</div>
+                <div class="stat-number" id="stat-total-productos">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Existencia Total</div>
+                <div class="stat-number" id="stat-total-existencia">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Categorías</div>
+                <div class="stat-number" id="stat-total-categorias">0</div>
+            </div>
+        </div>
 
         <div class="card">
-            <h3>Módulos disponibles</h3>
-            <ul>
-                <li>Visualización de productos</li>
-                <li>Formulario de captura</li>
-                <li>Navegación entre páginas</li>
+            <h3>Bienvenido al Sistema</h3>
+            <p style="margin-top: 8px; color: var(--text-secondary);">
+                Este sistema permite visualizar el catálogo completo de productos en existencia,
+                dar de alta nuevos artículos con validaciones de datos y realizar modificaciones o eliminaciones
+                directas en el inventario.
+            </p>
+
+            <div style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+                <a href="productos.html" class="btn btn-secondary">📦 Ver Inventario Completo</a>
+                <a href="agregar.html" class="btn btn-secondary">➕ Registrar Nuevo Artículo</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Módulos y Funcionalidades</h3>
+            <ul style="margin: 12px 0 0 20px; color: var(--text-secondary); line-height: 1.8;">
+                <li><strong>Catálogo interactivo:</strong> Visualización de tabla con existencias y badges de estado.</li>
+                <li><strong>Gestión de productos:</strong> Registro con validaciones completas contra duplicados y valores negativos.</li>
+                <li><strong>Modificación y eliminación:</strong> Edición directa y confirmación preventiva para evitar pérdidas.</li>
+                <li><strong>Persistencia local:</strong> Almacenamiento continuo mediante <code>localStorage</code> del navegador.</li>
             </ul>
         </div>
     </main>
 
     <footer>
-        Aplicaciones Web - Unidad 4
+        Aplicaciones Web - Unidad 4 | Universidad Tecnológica de San Juan del Río
     </footer>
+
+    <script src="inventario.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const productos = obtenerProductos();
+            
+            // Total productos
+            document.getElementById('stat-total-productos').textContent = productos.length;
+            
+            // Total piezas en existencia
+            const totalStock = productos.reduce((acc, p) => acc + (Number(p.existencia) || 0), 0);
+            document.getElementById('stat-total-existencia').textContent = totalStock;
+            
+            // Total categorías únicas
+            const categoriasUnicas = new Set(productos.map(p => (p.categoria || '').trim().toLowerCase()).filter(Boolean));
+            document.getElementById('stat-total-categorias').textContent = categoriasUnicas.size;
+        });
+    </script>
 
 </body>
 
